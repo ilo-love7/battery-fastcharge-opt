@@ -1,0 +1,24 @@
+# 数据与产物（原始数据不入库，见 config.py 的 FASTCHARGE_ISU_ZIP）
+data/
+results/metrics/*.parquet
+results/cache/
+results/models/*.pkl
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+build/
+dist/
+
+# 环境
+.venv/
+venv/
+*.log
+
+# 系统
+.DS_Store
+Thumbs.db

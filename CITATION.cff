@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "fastcharge: Fast-Charging Protocol Evaluation and Multi-Objective Optimization on ISU-ILCC"
+version: 1.1.0
+date-released: "2026-10-30"
+license: MIT
+type: software
+authors:
+  - family-names: "ilo"
+    given-names: "love7"
+    alias: "ilo-love7"
+repository-code: "https://github.com/ilo-love7/battery-fastcharge-opt"
+keywords:
+  - lithium-ion battery
+  - fast charging
+  - charging protocol optimization
+  - Bayesian optimization
+  - lithium plating
+  - PyBaMM
+  - ISU-ILCC
+abstract: >-
+  Multi-objective Bayesian optimization of lithium-ion fast-charging protocols on the
+  ISU-ILCC aging dataset (240 cells, 61 protocols). Charging time is modelled with a
+  measured CC+CV law, life with a Gaussian-process surrogate validated leave-one-group-out,
+  and lithium plating is enforced as a hard constraint via PyBaMM's plating overpotential.
+references:
+  - type: article
+    title: "ISU-ILCC Battery Aging Dataset"
+    year: 2024
+    doi: "10.1016/j.xcrp.2024.101891"
+    journal: "Cell Reports Physical Science"
+  - type: article
+    title: "Closed-loop optimization of fast-charging protocols for batteries with machine learning"
+    year: 2020
+    doi: "10.1038/s41586-020-1994-5"
+    journal: "Nature"
+    authors:
+      - family-names: "Attia"
+        given-names: "Peter M."

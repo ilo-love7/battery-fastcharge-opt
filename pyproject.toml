@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fastcharge"
+version = "1.1.0"
+description = "ISU-ILCC 快充协议评估与多目标优化（电池清单 A3）"
+readme = "README.zh-CN.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "ilo-love7" }]
+dependencies = [
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "scipy>=1.10",
+    "scikit-learn>=1.3",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+bo = ["xgboost>=2.0", "shap>=0.44", "pyarrow>=14"]
+physics = ["pybamm>=24.1"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::FutureWarning",
+    "ignore:.*Sobol'.*:UserWarning",
+]

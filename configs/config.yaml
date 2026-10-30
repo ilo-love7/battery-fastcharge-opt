@@ -1,0 +1,41 @@
+# 数据源（原始 zip 只读，绝对路径写在这里便于离线复现）
+data:
+  isu_zip: "D:/项目/02_数据集/01_国际公开集/ISU_ILCC/ISU_ILCC.zip"
+  # 也可以用环境变量 FASTCHARGE_ISU_ZIP 覆盖
+
+# 寿命结局判定
+lifetime:
+  soh_threshold: 0.80        # EOL 判据（80% of 参考容量）
+  smooth_window: 11          # 容量序列中值滤波窗口（圈），抑制单圈野值
+  alternatives: [0.90, 0.85, 0.80, 0.70]   # 敏感性分析用
+
+# 目标口径
+targets:
+  primary_optimization: "log(可用循环数)"      # 优化目标
+  secondary_report: "log(等效满循环 EFC)"      # 归因报告用（口径更干净）
+
+# 决策空间（严格取自数据覆盖范围，不外推）
+optimization:
+  bounds:
+    span: [0.30, 0.85]
+    rate: [0.50, 3.00]
+    d_rate: [0.50, 2.50]
+  applicability_domain_quantile: 0.95   # 训练点两两距离的 P95
+  n_init: 48                            # Sobol 初始化点数
+  n_iter: 16                            # 每目标轴 EI 采集轮数
+  n_candidates: 3000
+  grid: [18, 18, 12]                    # 参照网格分辨率
+
+# 机理约束（PyBaMM）
+physics:
+  parameter_set: "OKane2022"
+  model: "SPM"
+  temperature_C: 30.0
+  safety_margin_V: 0.005
+  rate_scan: [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 5.0, 6.0]
+  temp_scan: [0, 15, 30, 45]
+
+# 绘图
+plot:
+  dpi: 130
+  font: ["Microsoft YaHei", "DejaVu Sans"]

@@ -1,0 +1,2 @@
+﻿stage,rate_C,soc_from,soc_to,dQ_span,damage,damage_share,window
+1,3.0,0.0,0.85,0.85,0.0017548164827259909,1.0,宽窗口 0–85%
