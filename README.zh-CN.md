@@ -7,7 +7,7 @@
 
 > 用 ISU-ILCC 的 240 只电芯、61 种充电协议，回答一个问题：**充电协议怎么调，才能又快又不伤电池？**
 
-`Python 3.10+` · `PyBaMM` · `scikit-learn` · `55 tests passing` · English: [README.md](README.md)
+`Python 3.10+` · `PyBaMM` · `scikit-learn` · `72 tests passing` · English: [README.md](README.md)
 
 ![Pareto](docs/figures/main_pareto.png)
 
@@ -110,6 +110,52 @@ Kruskal-Wallis 效应量 ε²（n=239）：
 
 ---
 
+## 跨数据集验证（v1.3 新增）
+
+![snl](results/figures/20_snl_factorial.png)
+
+上一轮留下一个负结果："倍率效应 perm p=0.17 不稳健"。本轮用 **Sandia SNL 的因子化设计**去独立验证它。
+
+**Sandia 是天然对照实验**：文件名编码 `化学_温度_窗口_充/放电倍率`，
+同一 (化学, 温度, 窗口) 下有 0.5/1/2/3C 多档放电倍率，而**充电恒定 0.5C**。
+
+| 应变量 | n | 倍率 p | 倍率 η² | 化学 η² |
+|---|---|---|---|---|
+| **容量衰减率/1000圈** ★主分析 | 61 | **0.966** | 0.028 | 0.428 |
+| 存活循环数（删失感知） | 61 | 0.016 | 0.038 | **0.873** |
+| EOL 循环数（仅未删失） | 35 | 0.715 | 0.049 | 0.314 |
+
+**三个口径的共同点**：倍率只解释 **3–5%** 的方差，化学体系解释 **31–87%**，且方向不稳定。
+
+### 结论升级
+
+| 版本 | 表述 |
+|---|---|
+| v1.1 | "倍率效应 perm p=0.17，**证据不足**" |
+| **v1.3** | "倍率效应在**两个独立数据集**上**弱且口径依赖**" → **升级为正式负结论** |
+
+### 顺带发现：化学体系才是第一性因素
+
+固定 1C / 25°C / 满窗口的干净对照：
+
+| 化学 | 存活循环中位 |
+|---|---|
+| **LFP** | **3292** |
+| NCA | 588 |
+| NMC | 525 |
+
+**LFP 比 NCA 长寿 5.6 倍**。**不是你怎么充，而是你用什么材料。**
+
+### 本轮又修了三个方法论错误
+
+1. **删失陷阱**：61 只里 26 只删失（NMC 1C 全删失）。直接用 `eol_cycle` 会丢样本且**系统性偏向短寿命组** → 改用容量衰减率（对删失最不敏感）
+2. **不平衡设计 ANOVA 算错**：用平衡公式 `SS_AB = SS_cells − SS_A − SS_B` 得到 **F = −9.39**（数学上不可能）→ 改用回归型嵌套 F 检验
+3. **"倍率越高越长寿"的反直觉**：不是高倍率有益，是 Sandia 按**日历期**停止测试 + 充放电倍率解耦 + 个体差异（同协议 4 只差 1.3–2.1 倍）三重叠加
+
+详见 [reports/深化报告-A3-跨数据集.md](reports/深化报告-A3-跨数据集.md)。
+
+---
+
 ## 口径陷阱：为什么不能直接用"循环数"
 
 这是本项目最容易踩的坑，也是最值得写进方法论的发现。
@@ -165,7 +211,7 @@ python scripts/17_temp_table.py        # 温度自适应协议表（工程交付
 python scripts/18_deepening5_summary.py
 
 # 测试（全部用合成电芯，不需要数据）
-python -m pytest tests -q            # 55 passed
+python -m pytest tests -q            # 72 passed
 ```
 
 或者一口气跑完：`bash scripts/run_all.sh`
@@ -189,10 +235,10 @@ src/fastcharge/
   rl.py          MDP 定义 + 精确 DP + 表格 Q-learning + 随机环境
   early.py       早期寿命特征与预测
 
-scripts/       01–18 全流程（每步独立可跑，产物落 results/）
-tests/         55 项单测，合成数据，CI 无数据可跑
-reports/       基准评测报告-A3.md + 深化报告-A3.md + 深化报告-A3-敏感性.md
-results/       metrics（73 个表/parquet）/ figures（19 张图）/ models（GP 代理）
+scripts/       01–20 全流程（每步独立可跑，产物落 results/）
+tests/         72 项单测，合成数据，CI 无数据可跑
+reports/       基准评测报告-A3.md + 深化报告-A3.md + 深化报告-A3-敏感性.md + 深化报告-A3-跨数据集.md
+results/       metrics（77 个表/parquet）/ figures（20 张图）/ models（GP 代理）
 docs/figures/  6 张主图
 ```
 

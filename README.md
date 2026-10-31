@@ -7,7 +7,7 @@
 
 > 240 cells, 61 charging protocols from ISU-ILCC, one question: **how should you tune a charging protocol to be fast without killing the cell?**
 
-`Python 3.10+` · `PyBaMM` · `scikit-learn` · `55 tests passing` · 中文: [README.zh-CN.md](README.zh-CN.md)
+`Python 3.10+` · `PyBaMM` · `scikit-learn` · `72 tests passing` · 中文: [README.zh-CN.md](README.zh-CN.md)
 
 ![Pareto](docs/figures/main_pareto.png)
 
@@ -112,6 +112,53 @@ Full detail: [reports/深化报告-A3-敏感性.md](reports/深化报告-A3-敏�
 
 ---
 
+## Cross-dataset validation (v1.3)
+
+![snl](results/figures/20_snl_factorial.png)
+
+The previous round left a negative result: "the rate effect has perm p=0.17 — not robust".
+This round tests it independently on **Sandia SNL's factorial design**.
+
+**Sandia is a natural controlled experiment**: filenames encode `chem_temp_window_charge-discharge-rate`,
+so every (chem, temp, window) cell contains 0.5/1/2/3 C discharge rates while **charging stays at 0.5 C**.
+
+| Response | n | rate p | rate η² | chemistry η² |
+|---|---|---|---|---|
+| **Capacity fade /1000 cycles** ★primary | 61 | **0.966** | 0.028 | 0.428 |
+| Survived cycles (censoring-aware) | 61 | 0.016 | 0.038 | **0.873** |
+| EOL cycles (uncensored only) | 35 | 0.715 | 0.049 | 0.314 |
+
+**All three bases agree**: rate explains **3–5%** of the variance; chemistry explains **31–87%**, and the direction is unstable.
+
+### The verdict upgraded
+
+| Version | Wording |
+|---|---|
+| v1.1 | "perm p=0.17, **insufficient evidence**" |
+| **v1.3** | "across **two independent datasets** the rate effect is **weak and basis-dependent**" → **a formal negative result** |
+
+### Side finding: chemistry is the first-order factor
+
+Clean comparison at fixed 1 C / 25 °C / full window:
+
+| Chemistry | median survived cycles |
+|---|---|
+| **LFP** | **3292** |
+| NCA | 588 |
+| NMC | 525 |
+
+**LFP lasts 5.6× longer than NCA.** **It's not how you charge — it's what the cell is made of.**
+
+### Three more methodology bugs fixed this round
+
+1. **Censoring trap**: 26 of 61 cells are right-censored (NMC 1 C: all four). Using `eol_cycle` drops samples **and biases toward short-lived cells** → switched to capacity fade rate, which is censoring-insensitive
+2. **Unbalanced-design ANOVA was wrong**: the balanced formula `SS_AB = SS_cells − SS_A − SS_B` produced **F = −9.39** (impossible) → replaced with regression-based nested F tests
+3. **The counter-intuitive "faster cycling lasts longer"**: not a benefit of high rate, but three effects stacking — Sandia stops on a **fixed calendar schedule**, charge/discharge rates are decoupled, and cell-to-cell scatter (1.3–2.1× within one protocol) swamps the main effect
+
+Full detail: [reports/深化报告-A3-跨数据集.md](reports/深化报告-A3-跨数据集.md).
+
+---
+
 ## The metric trap: never model `cycle_number` directly
 
 The most important methodological finding here.
@@ -166,7 +213,7 @@ python scripts/17_temp_table.py        # temperature-adaptive protocol table
 python scripts/18_deepening5_summary.py
 
 # Tests — synthetic cells only, no dataset needed
-python -m pytest tests -q            # 55 passed
+python -m pytest tests -q            # 72 passed
 ```
 
 Or run everything: `bash scripts/run_all.sh`
@@ -190,10 +237,10 @@ src/fastcharge/
   rl.py          MDP, exact DP, tabular Q-learning, stochastic environment
   early.py       early-life features and prediction
 
-scripts/       01–18, each independently runnable, artefacts land in results/
-tests/         55 unit tests, synthetic data, CI runs without the dataset
-reports/       基准评测报告-A3.md + 深化报告-A3.md + 深化报告-A3-敏感性.md
-results/       metrics (73 tables) / figures (19) / models (GP surrogate)
+scripts/       01–20, each independently runnable, artefacts land in results/
+tests/         72 unit tests, synthetic data, CI runs without the dataset
+reports/       基准评测报告-A3.md + 3 份深化报告
+results/       metrics (77 tables) / figures (20) / models (GP surrogate)
 docs/figures/  6 headline figures
 ```
 

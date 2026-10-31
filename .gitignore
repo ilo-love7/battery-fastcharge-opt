@@ -22,3 +22,6 @@ venv/
 # 系统
 .DS_Store
 Thumbs.db
+
+# Sandia 缓存（可由 scripts/20 重建）
+results/snl/cells.parquet
