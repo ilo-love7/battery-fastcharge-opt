@@ -7,7 +7,7 @@
 
 > 240 cells, 61 charging protocols from ISU-ILCC, one question: **how should you tune a charging protocol to be fast without killing the cell?**
 
-`Python 3.10+` · `PyBaMM` · `scikit-learn` · `45 tests passing` · 中文: [README.zh-CN.md](README.zh-CN.md)
+`Python 3.10+` · `PyBaMM` · `scikit-learn` · `55 tests passing` · 中文: [README.zh-CN.md](README.zh-CN.md)
 
 ![Pareto](docs/figures/main_pareto.png)
 
@@ -88,6 +88,30 @@ Full detail: [reports/深化报告-A3.md](reports/深化报告-A3.md).
 
 ---
 
+## Four sensitivity checks (v1.2)
+
+![deepening5](docs/figures/main_deepening5.png)
+
+The previous round pushed forward; this round looks back — **every claim rests on a parameter I chose myself**.
+
+| Check | Finding | Nature |
+|---|---|---|
+| **⑤ EOL threshold** | Protocol ranking is essentially unchanged across 70–85% (Spearman **≥0.982**), degrading only at 90% (0.899). **The protocol cards don't depend on the 80% choice**, but absolute lifetime numbers only hold at their declared threshold | ✅ robust |
+| **⑥ Plating model** | 30 °C safe limit **SPM=1.00 C / SPMe=1.50 C / DFN=1.50 C** — **SPM is the most conservative**, the opposite of what I expected. Three models agree on 5/7 rate points | 🔄 expectation overturned |
+| **⑦ Ageing drift** | Normalized τ (time per Ah) rises **+10%** (resistance), but absolute charge time **drops −9%** (charge shrinks 17%). **Net effect: charging gets faster as the cell ages** | ⚠️ normalization required |
+| **⑧ Temperature table** | 5 zones × 4 windows = 20-cell engineering table; winter 0.50 C / summer 1.40 C. Only **15%** of measured protocols are compliant at room temperature | ✅ engineering deliverable |
+
+**The ⑦ trap**: comparing raw charge time yields "ageing makes charging 9% faster" — wrong.
+The right metric is **time per unit charge** τ = t/q, which rises 10% (resistance is really worse),
+masked by the 17% capacity loss. Check: `0.825 × 1.101 = 0.908 ≈ 0.913` ✓
+
+**The ⑧ value**: the only artifact that can drop straight into a BMS spec sheet.
+It also exposes an awkward fact — **protocols calibrated in a 30 °C oven are 97% non-compliant on a winter vehicle**.
+
+Full detail: [reports/深化报告-A3-敏感性.md](reports/深化报告-A3-敏感性.md).
+
+---
+
 ## The metric trap: never model `cycle_number` directly
 
 The most important methodological finding here.
@@ -134,8 +158,15 @@ python scripts/11_early.py           # early-life prediction
 python scripts/12_robustness.py      # bootstrap + permutation tests
 python scripts/13_deepening_summary.py
 
+# Sensitivity checks (v1.2, ~40 min incl. PyBaMM three-model grid)
+python scripts/14_eol_sensitivity.py   # EOL 70–90% (single pass reuses the trace, avoids OOM)
+python scripts/15_model_sensitivity.py # SPM / SPMe / DFN plating criteria
+python scripts/16_time_drift.py        # ageing drift (must normalize τ)
+python scripts/17_temp_table.py        # temperature-adaptive protocol table
+python scripts/18_deepening5_summary.py
+
 # Tests — synthetic cells only, no dataset needed
-python -m pytest tests -q            # 45 passed
+python -m pytest tests -q            # 55 passed
 ```
 
 Or run everything: `bash scripts/run_all.sh`
@@ -159,11 +190,11 @@ src/fastcharge/
   rl.py          MDP, exact DP, tabular Q-learning, stochastic environment
   early.py       early-life features and prediction
 
-scripts/       01–13, each independently runnable, artefacts land in results/
-tests/         45 unit tests, synthetic data, CI runs without the dataset
-reports/       基准评测报告-A3.md + 深化报告-A3.md
-results/       metrics (50+ tables) / figures (14) / models (GP surrogate)
-docs/figures/  4 headline figures + 1 deep-dive summary
+scripts/       01–18, each independently runnable, artefacts land in results/
+tests/         55 unit tests, synthetic data, CI runs without the dataset
+reports/       基准评测报告-A3.md + 深化报告-A3.md + 深化报告-A3-敏感性.md
+results/       metrics (73 tables) / figures (19) / models (GP surrogate)
+docs/figures/  6 headline figures
 ```
 
 ---

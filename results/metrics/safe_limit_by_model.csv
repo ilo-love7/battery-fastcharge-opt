@@ -1,0 +1,10 @@
+﻿model,temperature_C,safe_rate_limit_C
+SPM,15.0,0.5
+SPM,30.0,1.0
+SPM,45.0,2.5
+SPMe,15.0,0.5
+SPMe,30.0,1.5
+SPMe,45.0,2.5
+DFN,15.0,0.5
+DFN,30.0,1.5
+DFN,45.0,2.5

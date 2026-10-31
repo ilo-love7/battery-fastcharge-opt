@@ -7,7 +7,7 @@
 
 > 用 ISU-ILCC 的 240 只电芯、61 种充电协议，回答一个问题：**充电协议怎么调，才能又快又不伤电池？**
 
-`Python 3.10+` · `PyBaMM` · `scikit-learn` · `45 tests passing` · English: [README.md](README.md)
+`Python 3.10+` · `PyBaMM` · `scikit-learn` · `55 tests passing` · English: [README.md](README.md)
 
 ![Pareto](docs/figures/main_pareto.png)
 
@@ -86,6 +86,30 @@ Kruskal-Wallis 效应量 ε²（n=239）：
 
 ---
 
+## 四项敏感性检验（v1.2 新增）
+
+![deepening5](docs/figures/main_deepening5.png)
+
+前一轮是"往前推"，这一轮是"往回查"——**每条结论背后都有一个我人为设定的参数**。
+
+| 检验 | 结论 | 性质 |
+|---|---|---|
+| **⑤ EOL 阈值** | 70–85% 区间协议排名几乎不动（Spearman **≥0.982**），90% 才松动到 0.899。**推荐卡不依赖 80% 这个选择**，但绝对寿命数字只在自声明阈值下有效 | ✅ 稳健 |
+| **⑥ 析锂模型** | 30°C 安全上限 **SPM=1.00C / SPMe=1.50C / DFN=1.50C** —— **SPM 反而最保守**（与我原本的预期相反）。三模型一致判定 5/7 个倍率点 | 🔄 预期被推翻 |
+| **⑦ 老化漂移** | 归一化 τ（每 Ah 时间）中位 **+10%**（内阻恶化），但绝对时长 **−9%**（电荷量 −17% 更狠）。**净效应是老化后充电变快** | ⚠️ 必须先归一化 |
+| **⑧ 温度协议表** | 5 温区 × 4 窗口 = 20 格工程表；冬季 0.50C / 夏季 1.40C。实测协议在常温仅 **15%** 合规 | ✅ 工程交付 |
+
+**⑦ 的陷阱**：直接比充电时长会得出"老化让充电变快 9%"的错误结论。
+正确做法看**单位电荷所需时间** τ = t/q——它上升 10%，说明内阻确实恶化，
+只是被容量衰减（−17%）掩盖了。验算：`0.825 × 1.101 = 0.908 ≈ 0.913` ✓
+
+**⑧ 的价值**：这是唯一能直接贴进 BMS 规格书的产物。
+但也暴露了一个尴尬事实——**实验室 30°C 恒温标定的协议，搬到冬季车上 97% 不合规**。
+
+详见 [reports/深化报告-A3-敏感性.md](reports/深化报告-A3-敏感性.md)。
+
+---
+
 ## 口径陷阱：为什么不能直接用"循环数"
 
 这是本项目最容易踩的坑，也是最值得写进方法论的发现。
@@ -133,8 +157,15 @@ python scripts/11_early.py          # 早期寿命预测
 python scripts/12_robustness.py     # bootstrap + 置换检验
 python scripts/13_deepening_summary.py
 
+# 敏感性检验（v1.2，约 40 min，含 PyBaMM 三模型网格）
+python scripts/14_eol_sensitivity.py   # EOL 阈值 70–90%（单次遍历复用轨迹，防 OOM）
+python scripts/15_model_sensitivity.py # SPM / SPMe / DFN 析锂判据对比
+python scripts/16_time_drift.py        # 充电时长老化漂移（必须归一化 τ）
+python scripts/17_temp_table.py        # 温度自适应协议表（工程交付）
+python scripts/18_deepening5_summary.py
+
 # 测试（全部用合成电芯，不需要数据）
-python -m pytest tests -q            # 45 passed
+python -m pytest tests -q            # 55 passed
 ```
 
 或者一口气跑完：`bash scripts/run_all.sh`
@@ -157,13 +188,12 @@ src/fastcharge/
   multistage.py  阶梯协议搜索与逐段损伤分解
   rl.py          MDP 定义 + 精确 DP + 表格 Q-learning + 随机环境
   early.py       早期寿命特征与预测
-  protocol/lifetime/... 见上
 
-scripts/       01–13 全流程（每步独立可跑，产物落 results/）
-tests/         45 项单测，合成数据，CI 无数据可跑
-reports/       基准评测报告-A3.md + 深化报告-A3.md
-results/       metrics（50+ 个表）/ figures（14 张图）/ models（GP 代理）
-docs/figures/  4 张主图 + 1 张深化汇总图
+scripts/       01–18 全流程（每步独立可跑，产物落 results/）
+tests/         55 项单测，合成数据，CI 无数据可跑
+reports/       基准评测报告-A3.md + 深化报告-A3.md + 深化报告-A3-敏感性.md
+results/       metrics（73 个表/parquet）/ figures（19 张图）/ models（GP 代理）
+docs/figures/  6 张主图
 ```
 
 ---
