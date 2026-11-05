@@ -28,6 +28,10 @@ $PY scripts/16_time_drift.py
 $PY scripts/17_temp_table.py
 $PY scripts/18_deepening5_summary.py
 
+echo "=== 因子化与日历/循环分解 v1.3+ ==="
+$PY scripts/20_factorial_snl.py
+$PY scripts/21_calendar_aging.py
+
 echo "=== 测试 ==="
 $PY -m pytest tests -q
 
