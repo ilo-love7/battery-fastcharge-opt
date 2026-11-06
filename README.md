@@ -1,17 +1,37 @@
+<div align="center">
+
 # Fast-Charging Protocol Optimization (A3)
 
-[![CI](https://github.com/ilo-love7/battery-fastcharge-opt/actions/workflows/ci.yml/badge.svg)](https://github.com/ilo-love7/battery-fastcharge-opt/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
-[![PyBaMM](https://img.shields.io/badge/PyBaMM-26.10-orange)](https://pybamm.org)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+### How should you tune a charging protocol to be fast without killing the cell? — 240 cells, 61 protocols, one plating-aware answer
 
-> 240 cells, 61 charging protocols from ISU-ILCC, one question: **how should you tune a charging protocol to be fast without killing the cell?**
+[![tests](https://github.com/ilo-love7/battery-fastcharge-opt/actions/workflows/ci.yml/badge.svg)](https://github.com/ilo-love7/battery-fastcharge-opt/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![tests](https://img.shields.io/badge/tests-72%20passed-brightgreen)
+![metric](https://img.shields.io/badge/protocol%20B-time%20%E2%88%9240%25%20life%20%2B335%25-orange)
+![data](https://img.shields.io/badge/data-ISU--ILCC%20%2B%20SNL-lightgrey)
 
-`Python 3.10+` · `PyBaMM` · `scikit-learn` · `72 tests passing` · 中文: [README.zh-CN.md](README.zh-CN.md)
+<p align="center">
+  <b>English</b> · <a href="./README.zh-CN.md">简体中文</a>
+</p>
 
-![Pareto](docs/figures/main_pareto.png)
+<p align="center">
+  <img src="docs/figures/main_pareto.png" width="620" alt="Pareto front: charge time vs predicted life, plating regime marked">
+</p>
 
----
+</div>
+
+
+## Data
+
+| Dataset | Role | Licence | Location |
+|---|---|---|---|
+| **ISU-ILCC** Battery Aging Dataset (240 cells, 61 charging protocols, 10.06 GB zip) | Main benchmark: all lifetime / charge-time / surrogate results | CC BY 4.0 | [figshare 22582234](https://iastate.figshare.com/articles/dataset/_b_ISU-ILCC_Battery_Aging_Dataset_b_/22582234) |
+| Sandia **SNL** (v1.3 cross-dataset) | External validation: chemistry is the first-order factor | public | `D:/项目/02_数据集/` (zip streamed) |
+| PyBaMM **OKane2022** parameter set | Mechanistic plating criterion (η_pl) + safe-rate envelope | BSD-3 | via PyBaMM 26.10 |
+
+Protocol: four cells per protocol are replicates — everything is **Leave-One-Group-Out (61 folds)**,
+never random KFold (leaks). Lifetime is reported on a **dual basis** (cycles vs EFC); see the metric trap below.
 
 ## Three findings (read this first)
 
@@ -59,103 +79,6 @@ The unconstrained multi-objective BO returns 12 Pareto protocols. Run each throu
 - Wilson 95% CI on the violation rate: **[56%, 96%]** — even the most conservative estimate keeps it above half
 - Re-optimizing with the mechanism as a hard constraint pushes the fastest endpoint from 0.93 h to 1.52 h (+64%)
 - **Yet the constrained front still beats the 0.5 C full-window baseline: −35% time, +41% cycle life**
-
----
-
-## Four deep dives (v1.1)
-
-![deepening](docs/figures/main_deepening.png)
-
-| Deep dive | Core finding | Nature |
-|---|---|---|
-| **① Cascade protocols** | `3C@4V → 2C@4.1V → 1C@4.2V` is **5.6% faster than constant 1.5C while having 5.9× the plating margin**; 25 dominance relations in total | ✅ positive |
-| **② RL / DP** | Q-learning matches DP **exactly on 7/7 λ values** (independent validation); but under temperature noise the joint RL policy is worth only **+0.3%** while naive greedy is **−7%** | ⚖️ validation OK / gain negative |
-| **③ Early-life prediction** | Needs **N=400 cycles** to reach MAPE 20.8% (protocol baseline 34.4%); **N≤200 is worse than the baseline** | ⚠️ partly negative |
-| **④ Robustness** | 4/5 claims survive permutation tests; **the rate effect (C2) has perm p=0.17 → not robust** | 🔍 self-refuting |
-
-**Why cascades can dominate**: a constant-rate protocol is hostage to its worst segment.
-Cascades allocate rate by SOC — 3 C where the plating margin is large, 1 C where it isn't.
-
-**RL's honest position**: not a better solver (DP is already exact and runs in milliseconds);
-its only value is adapting to observed uncertainty, measured at 0.3% —
-**not worth 20k training episodes**.
-
-**Early-prediction threshold**: N=50 at 38% MAPE is fine for **coarse screening** (94% bench-time saving);
-**ranking** requires N=400 (53% saving). **Never use N≤200 for absolute lifetime prediction** —
-it is worse than protocol parameters alone.
-
-Full detail: [reports/深化报告-A3.md](reports/深化报告-A3.md).
-
----
-
-## Four sensitivity checks (v1.2)
-
-![deepening5](docs/figures/main_deepening5.png)
-
-The previous round pushed forward; this round looks back — **every claim rests on a parameter I chose myself**.
-
-| Check | Finding | Nature |
-|---|---|---|
-| **⑤ EOL threshold** | Protocol ranking is essentially unchanged across 70–85% (Spearman **≥0.982**), degrading only at 90% (0.899). **The protocol cards don't depend on the 80% choice**, but absolute lifetime numbers only hold at their declared threshold | ✅ robust |
-| **⑥ Plating model** | 30 °C safe limit **SPM=1.00 C / SPMe=1.50 C / DFN=1.50 C** — **SPM is the most conservative**, the opposite of what I expected. Three models agree on 5/7 rate points | 🔄 expectation overturned |
-| **⑦ Ageing drift** | Normalized τ (time per Ah) rises **+10%** (resistance), but absolute charge time **drops −9%** (charge shrinks 17%). **Net effect: charging gets faster as the cell ages** | ⚠️ normalization required |
-| **⑧ Temperature table** | 5 zones × 4 windows = 20-cell engineering table; winter 0.50 C / summer 1.40 C. Only **15%** of measured protocols are compliant at room temperature | ✅ engineering deliverable |
-
-**The ⑦ trap**: comparing raw charge time yields "ageing makes charging 9% faster" — wrong.
-The right metric is **time per unit charge** τ = t/q, which rises 10% (resistance is really worse),
-masked by the 17% capacity loss. Check: `0.825 × 1.101 = 0.908 ≈ 0.913` ✓
-
-**The ⑧ value**: the only artifact that can drop straight into a BMS spec sheet.
-It also exposes an awkward fact — **protocols calibrated in a 30 °C oven are 97% non-compliant on a winter vehicle**.
-
-Full detail: [reports/深化报告-A3-敏感性.md](reports/深化报告-A3-敏感性.md).
-
----
-
-## Cross-dataset validation (v1.3)
-
-![snl](results/figures/20_snl_factorial.png)
-
-The previous round left a negative result: "the rate effect has perm p=0.17 — not robust".
-This round tests it independently on **Sandia SNL's factorial design**.
-
-**Sandia is a natural controlled experiment**: filenames encode `chem_temp_window_charge-discharge-rate`,
-so every (chem, temp, window) cell contains 0.5/1/2/3 C discharge rates while **charging stays at 0.5 C**.
-
-| Response | n | rate p | rate η² | chemistry η² |
-|---|---|---|---|---|
-| **Capacity fade /1000 cycles** ★primary | 61 | **0.966** | 0.028 | 0.428 |
-| Survived cycles (censoring-aware) | 61 | 0.016 | 0.038 | **0.873** |
-| EOL cycles (uncensored only) | 35 | 0.715 | 0.049 | 0.314 |
-
-**All three bases agree**: rate explains **3–5%** of the variance; chemistry explains **31–87%**, and the direction is unstable.
-
-### The verdict upgraded
-
-| Version | Wording |
-|---|---|
-| v1.1 | "perm p=0.17, **insufficient evidence**" |
-| **v1.3** | "across **two independent datasets** the rate effect is **weak and basis-dependent**" → **a formal negative result** |
-
-### Side finding: chemistry is the first-order factor
-
-Clean comparison at fixed 1 C / 25 °C / full window:
-
-| Chemistry | median survived cycles |
-|---|---|
-| **LFP** | **3292** |
-| NCA | 588 |
-| NMC | 525 |
-
-**LFP lasts 5.6× longer than NCA.** **It's not how you charge — it's what the cell is made of.**
-
-### Three more methodology bugs fixed this round
-
-1. **Censoring trap**: 26 of 61 cells are right-censored (NMC 1 C: all four). Using `eol_cycle` drops samples **and biases toward short-lived cells** → switched to capacity fade rate, which is censoring-insensitive
-2. **Unbalanced-design ANOVA was wrong**: the balanced formula `SS_AB = SS_cells − SS_A − SS_B` produced **F = −9.39** (impossible) → replaced with regression-based nested F tests
-3. **The counter-intuitive "faster cycling lasts longer"**: not a benefit of high rate, but three effects stacking — Sandia stops on a **fixed calendar schedule**, charge/discharge rates are decoupled, and cell-to-cell scatter (1.3–2.1× within one protocol) swamps the main effect
-
-Full detail: [reports/深化报告-A3-跨数据集.md](reports/深化报告-A3-跨数据集.md).
 
 ---
 
@@ -294,7 +217,7 @@ The remaining ~40% is **cell-to-cell variability** — within one protocol, the 
 
 ---
 
-## Limitations
+## Limitations and negative results
 
 1. The plating criterion uses OKane2022 (NMC811/graphite-SiO₂) while ISU-ILCC is NMC/graphite 0.25 Ah pouch — **boundary shape and relative trend only**, not absolute truth
 2. Very shallow windows (span≤0.35) show 95% surrogate MAPE; point predictions are unusable there, ranking only
@@ -303,6 +226,110 @@ The remaining ~40% is **cell-to-cell variability** — within one protocol, the 
 5. Every ISU-ILCC experiment runs at a constant 30 °C; seasonal real-world temperature cycling is not covered
 
 Full list in [reports/基准评测报告-A3.md](reports/基准评测报告-A3.md) §8.
+
+---
+
+## Going deeper
+
+<details>
+<summary>Four deep dives (v1.1)</summary>
+
+![deepening](docs/figures/main_deepening.png)
+
+| Deep dive | Core finding | Nature |
+|---|---|---|
+| **① Cascade protocols** | `3C@4V → 2C@4.1V → 1C@4.2V` is **5.6% faster than constant 1.5C while having 5.9× the plating margin**; 25 dominance relations in total | ✅ positive |
+| **② RL / DP** | Q-learning matches DP **exactly on 7/7 λ values** (independent validation); but under temperature noise the joint RL policy is worth only **+0.3%** while naive greedy is **−7%** | ⚖️ validation OK / gain negative |
+| **③ Early-life prediction** | Needs **N=400 cycles** to reach MAPE 20.8% (protocol baseline 34.4%); **N≤200 is worse than the baseline** | ⚠️ partly negative |
+| **④ Robustness** | 4/5 claims survive permutation tests; **the rate effect (C2) has perm p=0.17 → not robust** | 🔍 self-refuting |
+
+**Why cascades can dominate**: a constant-rate protocol is hostage to its worst segment.
+Cascades allocate rate by SOC — 3 C where the plating margin is large, 1 C where it isn't.
+
+**RL's honest position**: not a better solver (DP is already exact and runs in milliseconds);
+its only value is adapting to observed uncertainty, measured at 0.3% —
+**not worth 20k training episodes**.
+
+**Early-prediction threshold**: N=50 at 38% MAPE is fine for **coarse screening** (94% bench-time saving);
+**ranking** requires N=400 (53% saving). **Never use N≤200 for absolute lifetime prediction** —
+it is worse than protocol parameters alone.
+
+Full detail: [reports/深化报告-A3.md](reports/深化报告-A3.md).
+
+</details>
+
+<details>
+<summary>Four sensitivity checks (v1.2)</summary>
+
+![deepening5](docs/figures/main_deepening5.png)
+
+The previous round pushed forward; this round looks back — **every claim rests on a parameter I chose myself**.
+
+| Check | Finding | Nature |
+|---|---|---|
+| **⑤ EOL threshold** | Protocol ranking is essentially unchanged across 70–85% (Spearman **≥0.982**), degrading only at 90% (0.899). **The protocol cards don't depend on the 80% choice**, but absolute lifetime numbers only hold at their declared threshold | ✅ robust |
+| **⑥ Plating model** | 30 °C safe limit **SPM=1.00 C / SPMe=1.50 C / DFN=1.50 C** — **SPM is the most conservative**, the opposite of what I expected. Three models agree on 5/7 rate points | 🔄 expectation overturned |
+| **⑦ Ageing drift** | Normalized τ (time per Ah) rises **+10%** (resistance), but absolute charge time **drops −9%** (charge shrinks 17%). **Net effect: charging gets faster as the cell ages** | ⚠️ normalization required |
+| **⑧ Temperature table** | 5 zones × 4 windows = 20-cell engineering table; winter 0.50 C / summer 1.40 C. Only **15%** of measured protocols are compliant at room temperature | ✅ engineering deliverable |
+
+**The ⑦ trap**: comparing raw charge time yields "ageing makes charging 9% faster" — wrong.
+The right metric is **time per unit charge** τ = t/q, which rises 10% (resistance is really worse),
+masked by the 17% capacity loss. Check: `0.825 × 1.101 = 0.908 ≈ 0.913` ✓
+
+**The ⑧ value**: the only artifact that can drop straight into a BMS spec sheet.
+It also exposes an awkward fact — **protocols calibrated in a 30 °C oven are 97% non-compliant on a winter vehicle**.
+
+Full detail: [reports/深化报告-A3-敏感性.md](reports/深化报告-A3-敏感性.md).
+
+</details>
+
+<details>
+<summary>Cross-dataset validation (v1.3)</summary>
+
+![snl](results/figures/20_snl_factorial.png)
+
+The previous round left a negative result: "the rate effect has perm p=0.17 — not robust".
+This round tests it independently on **Sandia SNL's factorial design**.
+
+**Sandia is a natural controlled experiment**: filenames encode `chem_temp_window_charge-discharge-rate`,
+so every (chem, temp, window) cell contains 0.5/1/2/3 C discharge rates while **charging stays at 0.5 C**.
+
+| Response | n | rate p | rate η² | chemistry η² |
+|---|---|---|---|---|
+| **Capacity fade /1000 cycles** ★primary | 61 | **0.966** | 0.028 | 0.428 |
+| Survived cycles (censoring-aware) | 61 | 0.016 | 0.038 | **0.873** |
+| EOL cycles (uncensored only) | 35 | 0.715 | 0.049 | 0.314 |
+
+**All three bases agree**: rate explains **3–5%** of the variance; chemistry explains **31–87%**, and the direction is unstable.
+
+### The verdict upgraded
+
+| Version | Wording |
+|---|---|
+| v1.1 | "perm p=0.17, **insufficient evidence**" |
+| **v1.3** | "across **two independent datasets** the rate effect is **weak and basis-dependent**" → **a formal negative result** |
+
+### Side finding: chemistry is the first-order factor
+
+Clean comparison at fixed 1 C / 25 °C / full window:
+
+| Chemistry | median survived cycles |
+|---|---|
+| **LFP** | **3292** |
+| NCA | 588 |
+| NMC | 525 |
+
+**LFP lasts 5.6× longer than NCA.** **It's not how you charge — it's what the cell is made of.**
+
+### Three more methodology bugs fixed this round
+
+1. **Censoring trap**: 26 of 61 cells are right-censored (NMC 1 C: all four). Using `eol_cycle` drops samples **and biases toward short-lived cells** → switched to capacity fade rate, which is censoring-insensitive
+2. **Unbalanced-design ANOVA was wrong**: the balanced formula `SS_AB = SS_cells − SS_A − SS_B` produced **F = −9.39** (impossible) → replaced with regression-based nested F tests
+3. **The counter-intuitive "faster cycling lasts longer"**: not a benefit of high rate, but three effects stacking — Sandia stops on a **fixed calendar schedule**, charge/discharge rates are decoupled, and cell-to-cell scatter (1.3–2.1× within one protocol) swamps the main effect
+
+Full detail: [reports/深化报告-A3-跨数据集.md](reports/深化报告-A3-跨数据集.md).
+
+</details>
 
 ---
 
